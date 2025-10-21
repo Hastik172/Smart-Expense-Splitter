@@ -1,0 +1,73 @@
+-- V1__init.sql
+-- Flyway migration: create initial schema for Smart Expense Splitter
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  avatar_url VARCHAR(1024) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS expense_groups (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  description TEXT DEFAULT NULL,
+  currency VARCHAR(8) NOT NULL DEFAULT 'USD',
+  created_by BIGINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS group_members (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  group_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  role ENUM('member','admin') NOT NULL DEFAULT 'member',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_group_user (group_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  group_id BIGINT UNSIGNED DEFAULT NULL,
+  payer_id BIGINT UNSIGNED NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  currency VARCHAR(8) NOT NULL DEFAULT 'USD',
+  description VARCHAR(1000) DEFAULT NULL,
+  occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  receipt_url VARCHAR(1024) DEFAULT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS expense_shares (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  expense_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  share_amount DECIMAL(12,2) NOT NULL,
+  is_settled TINYINT(1) NOT NULL DEFAULT 0,
+  settled_at DATETIME DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_expense_user (expense_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS payments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  from_user_id BIGINT UNSIGNED NOT NULL,
+  to_user_id BIGINT UNSIGNED NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  currency VARCHAR(8) NOT NULL DEFAULT 'USD',
+  reference_expense_id BIGINT UNSIGNED DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Indexes (created separately so Flyway is idempotent on many DBs)
+CREATE INDEX IF NOT EXISTS idx_expenses_group ON expenses(group_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_payer ON expenses(payer_id);
+CREATE INDEX IF NOT EXISTS idx_shares_user ON expense_shares(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_from ON payments(from_user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_to ON payments(to_user_id);
